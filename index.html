@@ -683,26 +683,120 @@ function drawGoos(){
 }
 
 // ── MOVE PLAYER ──
+// ── COLLISION OBJECTS ──
+const collisions = [
+  // Castle
+  {x:300,y:40,w:200,h:120},
+  {x:300,y:130,w:190,h:40},
+
+  // Castle towers
+  {x:290,y:70,w:35,h:100},
+  {x:470,y:70,w:35,h:100},
+
+  // Queen area
+  {x:385,y:190,w:40,h:30},
+
+  // Farm
+  {x:55,y:375,w:140,h:120},
+
+  // Shop
+  {x:575,y:380,w:150,h:120},
+
+  // Trees
+  {x:510,y:110,w:40,h:50},
+  {x:670,y:170,w:40,h:50},
+  {x:140,y:290,w:40,h:50},
+  {x:90,y:210,w:40,h:50},
+  {x:690,y:450,w:40,h:50},
+  {x:640,y:450,w:40,h:50},
+  {x:560,y:460,w:40,h:50},
+
+  // Villagers
+  {x:435,y:315,w:20,h:24},
+  {x:475,y:365,w:20,h:24},
+  {x:505,y:305,w:20,h:24},
+
+  // Farmer
+  {x:145,y:420,w:24,h:30},
+
+  // Shopkeeper
+  {x:550,y:455,w:24,h:30},
+];
+
+function checkCollision(x,y,size){
+  for(const c of collisions){
+    if(
+      x < c.x + c.w &&
+      x + size > c.x &&
+      y < c.y + c.h &&
+      y + size > c.y
+    ){
+      return true;
+    }
+  }
+  return false;
+}
 function movePlayer(){
   let moved=false;
-  if(keys["ArrowUp"]||keys["w"]||keys["W"]) { player.y-=player.speed; player.direction="up";   moved=true; }
-  if(keys["ArrowDown"]||keys["s"]||keys["S"]){ player.y+=player.speed; player.direction="down"; moved=true; }
-  if(keys["ArrowLeft"]||keys["a"]||keys["A"]){ player.x-=player.speed; player.direction="left"; moved=true; }
-  if(keys["ArrowRight"]||keys["d"]||keys["D"]){player.x+=player.speed; player.direction="right";moved=true; }
-  player.x = Math.max(0, Math.min(W-player.size, player.x));
-  player.y = Math.max(0, Math.min(H-player.size, player.y));
+
+  let newX = player.x;
+  let newY = player.y;
+
+  if(keys["ArrowUp"]||keys["w"]||keys["W"]){
+    newY -= player.speed;
+    player.direction="up";
+    moved=true;
+  }
+
+  if(keys["ArrowDown"]||keys["s"]||keys["S"]){
+    newY += player.speed;
+    player.direction="down";
+    moved=true;
+  }
+
+  if(keys["ArrowLeft"]||keys["a"]||keys["A"]){
+    newX -= player.speed;
+    player.direction="left";
+    moved=true;
+  }
+
+  if(keys["ArrowRight"]||keys["d"]||keys["D"]){
+    newX += player.speed;
+    player.direction="right";
+    moved=true;
+  }
+
+  // World bounds
+  newX = Math.max(0, Math.min(W-player.size, newX));
+  newY = Math.max(0, Math.min(H-player.size, newY));
+
+  // X collision
+  if(!checkCollision(newX, player.y, player.size)){
+    player.x = newX;
+  }
+
+  // Y collision
+  if(!checkCollision(player.x, newY, player.size)){
+    player.y = newY;
+  }
+
   if(moved){
     player.footTimer++;
     player.animTick++;
-    if(player.animTick>8){player.animFrame=(player.animFrame+1)%4; player.animTick=0;}
+
+    if(player.animTick>8){
+      player.animFrame=(player.animFrame+1)%4;
+      player.animTick=0;
+    }
+
     if(player.footTimer>14){
       spawnParticles(player.x+10, player.y+30, "#c2b280", 4);
       player.footTimer=0;
     }
   }
+
   if(player.invincible>0) player.invincible--;
 }
-
 // ── SWORD HIT BOX ──
 function getSwordBox(){
   const {x,y,direction,attacking}=player;
@@ -725,8 +819,43 @@ function updateGoos(){
     const g=goos[i];
     const dx=player.x-g.x, dy=player.y-g.y;
     const d=Math.sqrt(dx*dx+dy*dy);
-    if(d>0){ g.x+=dx/d*g.speed; g.y+=dy/d*g.speed; }
+    if(d>0){
 
+let newX = g.x + (dx/d)*g.speed;
+let newY = g.y + (dy/d)*g.speed;
+
+// Building collision
+if(!checkCollision(newX, g.y, g.size)){
+  g.x = newX;
+}
+
+if(!checkCollision(g.x, newY, g.size)){
+  g.y = newY;
+}
+
+// Goo-to-goo collision
+for(let j=0;j<goos.length;j++){
+  if(i===j) continue;
+
+  const other = goos[j];
+
+  const ddx = g.x - other.x;
+  const ddy = g.y - other.y;
+
+  const dist2 = Math.sqrt(ddx*ddx + ddy*ddy);
+
+  const minDist = (g.size + other.size)/2;
+
+  if(dist2 < minDist && dist2 > 0){
+    const push = (minDist - dist2) * 0.18;
+    g.x += (Math.random()-0.5) * 0.3;
+g.y += (Math.random()-0.5) * 0.3;
+
+    g.x += (ddx/dist2) * push;
+    g.y += (ddy/dist2) * push;
+  }
+}
+}
     // sword collision
     if(sword && rectsOverlap(sword.x,sword.y,sword.w,sword.h, g.x,g.y,g.size,g.size)){
       g.hp--;
