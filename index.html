@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Legend of Prayag</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;image-rendering:pixelated;-webkit-tap-highlight-color:transparent;}
+:root{
+  --gold:#f5c542;--dark:#0a0a0f;--border:#4a3f2a;
+  --btn:#2a1f0f;--btn-border:#8a6a2a;--btn-active:#1a0f05;
+  --hud-bg:rgba(10,8,5,0.88);--hud-border:#7a5a1a;
+}
+body{background:var(--dark);overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;width:100vw;touch-action:none;user-select:none;}
+#outerWrapper{display:flex;align-items:center;justify-content:center;gap:16px;width:100%;height:100%;}
+
+/* ── GAME CONTAINER ── */
+#gameContainer{
+  position:relative;flex-shrink:0;
+  width:min(calc(100vh*(4/3)),calc(100vw - 200px),800px);
+  aspect-ratio:4/3;
+  background:#000;
+  border:6px solid var(--border);
+  box-shadow:0 0 40px rgba(245,197,66,0.25),inset 0 0 20px rgba(0,0,0,0.8);
+  overflow:hidden;
+}
+canvas{width:100%;height:100%;display:block;}
+
+/* ── HUD OVERLAYS ── */
+#hud{
+  position:absolute;top:8px;left:8px;
+  background:var(--hud-bg);padding:8px 12px;
+  border:2px solid var(--hud-border);
+  font:bold 11px 'Courier New',monospace;color:#e8d080;
+  line-height:1.7;pointer-events:none;
+  text-shadow:0 0 6px rgba(245,197,66,0.5);
+  min-width:120px;
+}
+#hpBarWrap{width:100%;height:7px;background:#330000;border:1px solid #660000;border-radius:2px;margin-top:3px;}
+#hpBar{height:100%;width:100%;background:linear-gradient(90deg,#ff2200,#ff6600);border-radius:2px;transition:width 0.15s;}
+
+#missionBox{
+  position:absolute;top:8px;right:8px;
+  background:var(--hud-bg);padding:8px 10px;
+  border:2px solid var(--hud-border);
+  font:bold 11px 'Courier New',monospace;color:#e8d080;
+  width:160px;line-height:1.6;pointer-events:none;
+  text-shadow:0 0 6px rgba(245,197,66,0.5);
+}
+#waveTag{color:#ff8844;font-size:10px;}
+
+#messageBox{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:var(--hud-bg);padding:7px 14px;
+  border:2px solid var(--hud-border);
+  font:bold 11px 'Courier New',monospace;color:#e8d080;
+  white-space:nowrap;pointer-events:none;
+  text-shadow:0 0 6px rgba(245,197,66,0.5);
+  animation:msgFade 0.3s ease;
+}
+@keyframes msgFade{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── SIDE CONTROLS (desktop) ── */
+.sidePanel{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:rgba(20,14,5,0.9);border:2px solid var(--btn-border);
+  padding:12px 8px;border-radius:12px;
+  box-shadow:0 0 20px rgba(0,0,0,0.6);
+}
+.sidePanelLabel{font:bold 9px 'Courier New',monospace;color:#8a6a2a;letter-spacing:1px;text-align:center;}
+.padGrid{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:5px;}
+.padGrid .gap{width:48px;height:48px;}
+.controlBtn{
+  width:48px;height:48px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font-size:18px;
+  border-radius:8px;cursor:pointer;
+  box-shadow:0 4px 0 #0a0800,0 0 8px rgba(0,0,0,0.4);
+  transition:transform 0.05s,background 0.05s;
+  display:flex;align-items:center;justify-content:center;
+}
+.controlBtn:active,.controlBtn.pressed{transform:translateY(3px);background:var(--btn-active);box-shadow:0 1px 0 #0a0800;}
+.actionGrid{display:grid;grid-template-columns:repeat(2,52px);gap:6px;}
+.actionBtn{
+  width:52px;height:52px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font-size:20px;
+  border-radius:50%;cursor:pointer;
+  box-shadow:0 4px 0 #0a0800;
+  transition:transform 0.05s,background 0.05s;
+  display:flex;align-items:center;justify-content:center;
+}
+.actionBtn:active,.actionBtn.pressed{transform:translateY(3px);background:var(--btn-active);box-shadow:0 1px 0 #0a0800;}
+.pauseBtn{
+  width:48px;height:30px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font:bold 10px 'Courier New',monospace;
+  border-radius:6px;cursor:pointer;letter-spacing:1px;
+}
+
+/* ── MOBILE CONTROLS ── */
+#mobileControls{display:none;width:100%;align-items:center;justify-content:space-around;padding:10px 16px;flex-shrink:0;}
+.mobPad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:6px;}
+.mobPad .gap{width:64px;height:64px;}
+.mobBtn{
+  width:64px;height:64px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font-size:24px;
+  border-radius:10px;cursor:pointer;
+  box-shadow:0 4px 0 #0a0800;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:none;
+}
+.mobBtn:active,.mobBtn.pressed{transform:translateY(3px);background:var(--btn-active);box-shadow:0 1px 0 #0a0800;}
+.mobActions{display:grid;grid-template-columns:repeat(2,68px);gap:8px;}
+.mobActionBtn{
+  width:68px;height:68px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font-size:26px;
+  border-radius:50%;cursor:pointer;
+  box-shadow:0 4px 0 #0a0800;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:none;
+}
+.mobActionBtn:active,.mobActionBtn.pressed{transform:translateY(3px);background:var(--btn-active);box-shadow:0 1px 0 #0a0800;}
+.mobPauseWrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.mobPauseBtn{
+  width:56px;height:36px;border:2px solid var(--btn-border);
+  background:var(--btn);color:#e8d080;font:bold 9px 'Courier New',monospace;
+  border-radius:8px;cursor:pointer;letter-spacing:1px;
+}
+
+/* ── PAUSE OVERLAY ── */
+#pauseOverlay{
+  display:none;position:absolute;inset:0;
+  background:rgba(0,0,0,0.78);
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;z-index:10;
+}
+#pauseOverlay.visible{display:flex;}
+#pauseTitle{font:bold 28px 'Courier New',monospace;color:var(--gold);letter-spacing:4px;text-shadow:0 0 20px rgba(245,197,66,0.7);}
+.pauseMenuItem{
+  font:bold 14px 'Courier New',monospace;color:#c8a840;
+  padding:10px 28px;border:2px solid #5a4520;border-radius:6px;
+  background:rgba(30,20,5,0.9);cursor:pointer;letter-spacing:2px;
+  transition:background 0.15s,color 0.15s;
+}
+.pauseMenuItem:hover{background:rgba(80,60,15,0.9);color:var(--gold);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:860px){
+  .sidePanel{display:none;}
+  #gameContainer{width:100vw;max-height:55svh;border-left:none;border-right:none;}
+  #mobileControls{display:flex;}
+  #outerWrapper{flex-direction:column;gap:0;}
+}
+@media(max-width:480px){
+  .mobPad{grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:4px;}
+  .mobPad .gap,.mobBtn{width:54px;height:54px;}
+  .mobActions{grid-template-columns:repeat(2,58px);}
+  .mobActionBtn{width:58px;height:58px;}
+}
+</style>
+</head>
+<body>
+<div id="outerWrapper">
+
+<!-- LEFT PANEL: D-PAD -->
+<div class="sidePanel">
+  <div class="sidePanelLabel">MOVE</div>
+  <div class="padGrid">
+    <div class="gap"></div><button class="controlBtn" id="upBtn">▲</button><div class="gap"></div>
+    <button class="controlBtn" id="leftBtn">◀</button><div class="gap"></div><button class="controlBtn" id="rightBtn">▶</button>
+    <div class="gap"></div><button class="controlBtn" id="downBtn">▼</button><div class="gap"></div>
+  </div>
+  <button class="pauseBtn" id="pauseBtn">⏸ PAUSE</button>
+</div>
+
+<!-- GAME -->
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="hud">
+    ❤ HP: <span id="hpText">100</span>/100<div id="hpBarWrap"><div id="hpBar"></div></div>
+    🧪 <span id="potionText">3</span> &nbsp; 🪙 <span id="coinText">0</span><br>
+    🌊 Wave: <span id="waveText">0</span>
+  </div>
+  <div id="missionBox">
+    <span id="waveTag">MISSION</span><br>
+    <span id="missionText">Protect Prayag!</span>
+  </div>
+  <div id="messageBox" id="messageBox">Welcome, Hero of Prayag!</div>
+  <div id="pauseOverlay">
+    <div id="pauseTitle">— PAUSED —</div>
+    <div class="pauseMenuItem" id="resumeBtn">▶ RESUME</div>
+    <div class="pauseMenuItem" id="restartBtn">↺ RESTART</div>
+    <div style="font:11px 'Courier New',monospace;color:#6a5030;margin-top:8px;">ESC / P to toggle pause</div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL: ACTIONS -->
+<div class="sidePanel">
+  <div class="sidePanelLabel">ACTION</div>
+  <div class="actionGrid">
+    <button class="actionBtn" id="attackBtn" title="Attack [Space]">⚔️</button>
+    <button class="actionBtn" id="shieldBtn" title="Shield [Shift]">🛡️</button>
+    <button class="actionBtn" id="healBtn"   title="Heal [H]">💊</button>
+    <button class="actionBtn" id="buyBtn"    title="Buy [B]">🛒</button>
+  </div>
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div id="mobileControls">
+  <div class="mobPad">
+    <div class="gap"></div><button class="mobBtn" id="mUp">▲</button><div class="gap"></div>
+    <button class="mobBtn" id="mLeft">◀</button><div class="gap"></div><button class="mobBtn" id="mRight">▶</button>
+    <div class="gap"></div><button class="mobBtn" id="mDown">▼</button><div class="gap"></div>
+  </div>
+  <div class="mobPauseWrap">
+    <button class="mobPauseBtn" id="mPauseBtn">⏸ PAUSE</button>
+    <button class="mobActionBtn" id="mHeal">💊</button>
+    <button class="mobActionBtn" id="mBuy">🛒</button>
+  </div>
+  <div class="mobActions">
+    <button class="mobActionBtn" id="mAttack">⚔️</button>
+    <button class="mobActionBtn" id="mShield">🛡️</button>
+  </div>
+</div>
+
+</div>
+
+<!-- AUDIO: drop your MP3 path in src="" below -->
+<audio id="bgMusic" loop><source src="Minish Woods - The Legend of Zelda_ The Minish Cap OST.mp3" type="audio/mpeg"></audio>
+
+<script>
+/* =========================================================
+   LEGEND OF PRAYAG  –  v2.0
+   Single-file HTML5 Canvas RPG
+   ========================================================= */
+
+// ── CANVAS ──
+const canvas  = document.getElementById("gameCanvas");
+const ctx     = canvas.getContext("2d");
+const W = 800, H = 600;
+
+// ── HUD ELEMENTS ──
+const hpText      = document.getElementById("hpText");
+const hpBar       = document.getElementById("hpBar");
+const potionText  = document.getElementById("potionText");
+const coinText    = document.getElementById("coinText");
+const waveText    = document.getElementById("waveText");
+const missionText = document.getElementById("missionText");
+const waveTag     = document.getElementById("waveTag");
+const messageBox  = document.getElementById("messageBox");
+const pauseOverlay = document.getElementById("pauseOverlay");
+
+// ── AUDIO (Web Audio API – retro chip sounds) ──
+let audioCtx = null;
+function getAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function playTone(freq, dur, type="square", vol=0.12, slide=0){
+  try{
+    const ac=getAudio(), o=ac.createOscillator(), g=ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type=type; o.frequency.setValueAtTime(freq, ac.currentTime);
+    if(slide) o.frequency.linearRampToValueAtTime(freq+slide, ac.currentTime+dur);
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur);
+    o.start(); o.stop(ac.currentTime+dur);
+  }catch(e){}
+}
+function sfxHit()   { playTone(120, 0.15, "sawtooth", 0.15, -60); }
+function sfxAttack(){ playTone(440, 0.08, "square", 0.1, 200); }
+function sfxHeal()  { playTone(660, 0.12, "sine", 0.12); setTimeout(()=>playTone(880,0.18,"sine",0.12),80); }
+function sfxCoin()  { playTone(800, 0.07, "square", 0.08); setTimeout(()=>playTone(1200,0.1,"square",0.08),60); }
+function sfxWave()  { [200,280,360,440].forEach((f,i)=>setTimeout(()=>playTone(f,0.18,"square",0.1),i*100)); }
+function sfxDeath() { [300,250,200,150].forEach((f,i)=>setTimeout(()=>playTone(f,0.2,"sawtooth",0.15),i*120)); }
+function sfxVictory(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,0.25,"square",0.1),i*150)); }
+
+// ── INPUT ──
+const keys = {};
+let paused = false, gameStarted = false, gameOver = false;
+
+window.addEventListener("keydown", e => {
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+  if(e.key === " " && gameStarted && !paused){ player.attacking = true; sfxAttack(); }
+  if(e.key === "Shift" && gameStarted && !paused) player.shielding = true;
+  if((e.key === "h"||e.key === "H") && gameStarted && !paused) heal();
+  if((e.key === "b"||e.key === "B") && gameStarted && !paused) buyPotion();
+  if((e.key === "p"||e.key === "P"||e.key === "Escape") && gameStarted) togglePause();
+  if(e.key === "Enter" && !gameStarted) startGame();
+});
+window.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  if(e.key === " ") player.attacking = false;
+  if(e.key === "Shift") player.shielding = false;
+});
+
+// ── PAUSE ──
+function togglePause(){
+  paused = !paused;
+  pauseOverlay.classList.toggle("visible", paused);
+}
+document.getElementById("pauseBtn").onclick  = ()=>{ if(gameStarted) togglePause(); };
+document.getElementById("mPauseBtn").onclick = ()=>{ if(gameStarted) togglePause(); };
+document.getElementById("resumeBtn").onclick = ()=>togglePause();
+document.getElementById("restartBtn").onclick= ()=>{ if(paused) togglePause(); initGame(); };
+
+// ── PLAYER ──
+const player = {
+  x:400, y:300, size:24, speed:3,
+  hp:100, maxHp:100, potions:3, coins:0,
+  attacking:false, shielding:false, direction:"down",
+  attackTimer:0, invincible:0, footTimer:0,
+  animFrame:0, animTick:0
+};
+
+// ── ENEMIES ──
+let goos = [];
+
+// ── MISSION STATE ──
+const missionSides = ["North","South","East","West"];
+let missionActive = false, missionIndex = 0, waveNum = 0, spawnPending = false;
+let missionPrepTimer = 0;
+
+// ── PARTICLES & FLOATING TEXT ──
+const particles = [], floatTexts = [];
+let screenShake = 0;
+
+// ── WORLD TIME ──
+let worldTime = 0, nightBlend = 0, isNight = false;
+
+// ── UTILS ──
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function dist2(ax,ay,bx,by){ const dx=ax-bx,dy=ay-by; return Math.sqrt(dx*dx+dy*dy); }
+
+function setMsg(txt){
+  messageBox.textContent = txt;
+  messageBox.style.animation="none";
+  void messageBox.offsetWidth;
+  messageBox.style.animation="";
+}
+
+// ── PARTICLES ──
+function spawnParticles(x,y,color,n=8){
+  for(let i=0;i<n;i++)
+    particles.push({ x, y, dx:(Math.random()-0.5)*4.5, dy:(Math.random()-0.5)*4.5,
+      size:rand(2,4), life:rand(20,40), maxLife:40, color });
+}
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.dx; p.y+=p.dy; p.dy+=0.1; p.life--;
+    const alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=p.color;
+    ctx.fillRect(~~p.x, ~~p.y, p.size, p.size);
+    if(p.life<=0) particles.splice(i,1);
+  }
+  ctx.globalAlpha=1;
+}
+function spawnFloat(text,x,y,color="#ffff44"){
+  floatTexts.push({ text,x,y,vy:-0.9,life:55,maxLife:55,color });
+}
+function updateFloatTexts(){
+  for(let i=floatTexts.length-1;i>=0;i--){
+    const f=floatTexts[i];
+    f.y+=f.vy; f.life--;
+    const alpha=f.life/f.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=f.color;
+    ctx.font="bold 13px 'Courier New',monospace";
+    ctx.fillText(f.text,~~f.x,~~f.y);
+    if(f.life<=0) floatTexts.splice(i,1);
+  }
+  ctx.globalAlpha=1;
+}
+
+// ── DRAWING: MAP ──
+// Tile colours
+const C = {
+  grass1:"#4a9e50",grass2:"#3d8845",grass3:"#56b55e",
+  road:"#c8b07a", roadEdge:"#b09060",
+  stone:"#8a8070", stoneDark:"#6a6055",stoneLight:"#aaa090",
+  wood:"#7a4a1a", woodLight:"#9a6a2a",
+  thatch:"#d4a030", thatchDark:"#b08020",
+  water:"#3060c8", waterLight:"#4080e8",
+  crop:"#40a030", cropLight:"#60c050",
+  soil:"#6a3a0a",
+  wall:"#707868",wallDark:"#505850",wallLight:"#909888",
+};
+
+function drawMap(){
+  /* -- grass base */
+  ctx.fillStyle=C.grass1; ctx.fillRect(0,0,W,H);
+  /* checkerboard variation */
+  ctx.fillStyle=C.grass2;
+  for(let x=0;x<W;x+=32)for(let y=0;y<H;y+=32){if((x/32+y/32)%2===0)ctx.fillRect(x,y,32,32);}
+  /* scatter dark patches */
+  ctx.fillStyle=C.grass3;
+  [[160,160],[480,420],[600,200],[200,480],[700,350],[400,490],[120,380]].forEach(([gx,gy])=>ctx.fillRect(gx,gy,12,8));
+
+  drawRoads();
+  drawWater();
+  drawCastle();
+  drawFarm();
+  drawShop();
+  drawTrees();
+  drawNPCs();
+}
+
+function drawRoads(){
+  /* vertical road */
+  ctx.fillStyle=C.roadEdge; ctx.fillRect(357,0,86,H);
+  ctx.fillStyle=C.road;     ctx.fillRect(361,0,78,H);
+  /* horizontal road */
+  ctx.fillStyle=C.roadEdge; ctx.fillRect(0,257,W,86);
+  ctx.fillStyle=C.road;     ctx.fillRect(0,261,W,78);
+  /* centre paving */
+  ctx.fillStyle="#d8c090"; ctx.fillRect(361,261,78,78);
+  /* road markings */
+  ctx.fillStyle="rgba(255,255,255,0.15)";
+  for(let y=20;y<H;y+=60){ ctx.fillRect(396,y,8,30); }
+  for(let x=20;x<W;x+=60){ ctx.fillRect(x,292,30,8); }
+}
+
+function drawWater(){
+  ctx.fillStyle=C.water;
+  ctx.fillRect(10,500,110,80);
+  ctx.fillRect(12,502,106,76);
+  /* ripples */
+  ctx.fillStyle=C.waterLight;
+  for(let i=0;i<3;i++) ctx.fillRect(20+i*28, 520, 18, 4);
+}
+
+function drawCastle(){
+  const cx=310, cy=60;
+  /* outer wall */
+  ctx.fillStyle=C.stoneDark; ctx.fillRect(cx,cy+80,180,60);
+  ctx.fillStyle=C.wall; ctx.fillRect(cx+4,cy+84,172,52);
+  /* main keep */
+  ctx.fillStyle=C.stoneDark; ctx.fillRect(cx+30,cy,120,90);
+  ctx.fillStyle=C.wall; ctx.fillRect(cx+34,cy+4,112,82);
+  /* battlements */
+  ctx.fillStyle=C.stoneLight;
+  for(let i=0;i<5;i++){
+    ctx.fillRect(cx+30+i*24,cy-10,14,14);
+    ctx.fillRect(cx+30+i*24,cy-10, 14,2);
+  }
+  /* gate */
+  ctx.fillStyle="#221810"; ctx.fillRect(cx+80,cy+100,40,40);
+  ctx.fillStyle=C.wood;    ctx.fillRect(cx+82,cy+102,36,38);
+  ctx.fillStyle="#aa8840"; ctx.fillRect(cx+98,cy+118,6,6); // door knob
+  /* towers */
+  [cx-10, cx+160].forEach(tx=>{
+    ctx.fillStyle=C.stoneDark; ctx.fillRect(tx,cy+20,30,100);
+    ctx.fillStyle=C.wall;      ctx.fillRect(tx+3,cy+23,24,94);
+    ctx.fillStyle=C.stoneLight;
+    [0,14].forEach(bi=>{ ctx.fillRect(tx+3+bi,cy+10,10,14); });
+    /* tower arrow slit */
+    ctx.fillStyle="#221810"; ctx.fillRect(tx+12,cy+50,6,16);
+  });
+  /* flag */
+  ctx.fillStyle="#992200"; ctx.fillRect(cx+90,cy-30,4,32); // pole
+  ctx.fillStyle="#ff4400"; ctx.fillRect(cx+94,cy-28,20,14); // flag
+
+  /* Queen – sitting outside on steps */
+  const qx=cx+82, qy=cy+144;
+  // throne/steps
+  ctx.fillStyle=C.stoneDark; ctx.fillRect(qx-4,qy+14,36,10);
+  // queen dress (pink)
+  ctx.fillStyle="#f080a0"; ctx.fillRect(qx+2,qy+2,22,16);
+  // crown
+  ctx.fillStyle="#f5c542"; ctx.fillRect(qx+4,qy-8,18,8);
+  ctx.fillStyle="#f5c542"; [0,6,12].forEach(ci=>ctx.fillRect(qx+5+ci,qy-14,5,8));
+  ctx.fillStyle="#ff2244"; ctx.fillRect(qx+9,qy-18,6,6); // ruby
+  // face
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(qx+6,qy-4,12,10);
+  // eyes
+  ctx.fillStyle="#330000"; ctx.fillRect(qx+8,qy-1,2,2); ctx.fillRect(qx+14,qy-1,2,2);
+  // hair
+  ctx.fillStyle="#b06010"; ctx.fillRect(qx+5,qy-6,14,4);
+  // arms
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(qx,qy+4,6,10); ctx.fillRect(qx+20,qy+4,6,10);
+}
+
+function drawFarm(){
+  const fx=60, fy=400;
+  /* soil plot */
+  ctx.fillStyle=C.soil; ctx.fillRect(fx,fy+40,130,70);
+  /* crop rows */
+  for(let i=0;i<6;i++){
+    ctx.fillStyle=C.crop;    ctx.fillRect(fx+6+i*20,fy+46,10,42);
+    ctx.fillStyle=C.cropLight;ctx.fillRect(fx+9+i*20,fy+44,5,6);
+  }
+  /* barn */
+  ctx.fillStyle=C.woodLight; ctx.fillRect(fx,fy,70,44);
+  ctx.fillStyle=C.wood;      ctx.fillRect(fx+2,fy+2,66,40);
+  /* roof */
+  ctx.fillStyle=C.thatch;
+  ctx.beginPath(); ctx.moveTo(fx-4,fy); ctx.lineTo(fx+35,fy-22); ctx.lineTo(fx+74,fy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=C.thatchDark;
+  for(let i=0;i<5;i++) ctx.fillRect(fx+8+i*12,fy-18+i*4,8,3);
+  /* barn door */
+  ctx.fillStyle="#221810"; ctx.fillRect(fx+25,fy+18,22,26);
+  /* fence posts */
+  ctx.fillStyle=C.woodLight;
+  for(let i=0;i<5;i++){ ctx.fillRect(fx+i*26,fy+38,5,14); }
+  ctx.fillRect(fx,fy+44,130,4);
+
+  /* Farmer NPC */
+  const nfx=fx+88, nfy=fy+30;
+  ctx.fillStyle="#8B4513"; ctx.fillRect(nfx,nfy,16,18);          // body
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(nfx+2,nfy-10,12,10);     // face
+  ctx.fillStyle="#c8a030"; ctx.fillRect(nfx-2,nfy-14,20,6);      // hat brim
+  ctx.fillStyle="#a07020"; ctx.fillRect(nfx+2,nfy-22,12,12);     // hat top
+  ctx.fillStyle="#330000"; ctx.fillRect(nfx+4,nfy-7,2,2); ctx.fillRect(nfx+10,nfy-7,2,2); // eyes
+  // pitchfork
+  ctx.fillStyle=C.woodLight; ctx.fillRect(nfx+16,nfy-8,3,28);
+  ctx.fillStyle="#aaaaaa"; [0,4,8].forEach(pi=>ctx.fillRect(nfx+14+pi,nfy-14,2,10));
+}
+
+function drawShop(){
+  const sx=580, sy=400;
+  /* building */
+  ctx.fillStyle=C.woodLight; ctx.fillRect(sx,sy,140,90);
+  ctx.fillStyle=C.wood;      ctx.fillRect(sx+3,sy+3,134,84);
+  /* roof */
+  ctx.fillStyle="#cc2200"; ctx.fillRect(sx-6,sy-14,152,20);
+  ctx.fillStyle="#aa1800"; ctx.fillRect(sx-2,sy-18,144,8);
+  /* sign */
+  ctx.fillStyle="#f5c542"; ctx.fillRect(sx+30,sy-30,80,18);
+  ctx.fillStyle="#330000"; ctx.font="bold 10px 'Courier New',monospace";
+  ctx.fillText("⚗ SHOP",sx+38,sy-17);
+  /* door */
+  ctx.fillStyle="#221810"; ctx.fillRect(sx+55,sy+46,30,44);
+  ctx.fillStyle=C.woodLight; ctx.fillRect(sx+57,sy+48,26,42);
+  ctx.fillStyle="#f5c542"; ctx.fillRect(sx+64,sy+66,5,5);
+  /* windows */
+  [[sx+10,sy+20],[sx+100,sy+20]].forEach(([wx,wy])=>{
+    ctx.fillStyle="#221810"; ctx.fillRect(wx,wy,28,24);
+    ctx.fillStyle="#80c0ff"; ctx.fillRect(wx+3,wy+3,10,10);ctx.fillRect(wx+15,wy+3,10,10);
+    ctx.fillStyle="#a0d0ff"; ctx.fillRect(wx+3,wy+13,10,10);ctx.fillRect(wx+15,wy+13,10,10);
+  });
+  /* Shopkeeper NPC */
+  const skx=sx+62, sky=sy+76;
+  // only visible through window – let's put them outside
+  const nkx=sx-22, nky=sy+60;
+  ctx.fillStyle="#2244aa"; ctx.fillRect(nkx,nky,16,18);
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(nkx+2,nky-10,12,10);
+  ctx.fillStyle="#331100"; ctx.fillRect(nkx,nky-16,16,8);
+  ctx.fillStyle="#330000"; ctx.fillRect(nkx+4,nky-7,2,2); ctx.fillRect(nkx+10,nky-7,2,2);
+  // potion in hand
+  ctx.fillStyle="#00ff88"; ctx.fillRect(nkx+16,nky+2,8,12);
+  ctx.fillStyle="#ffffaa"; ctx.fillRect(nkx+18,nky,4,5);
+}
+
+function drawTrees(){
+  [[520,140],[680,200],[150,320],[100,240],[700,480],[650,480],[570,490]].forEach(([tx,ty])=>{
+    ctx.fillStyle="#3a6020"; ctx.fillRect(tx-10,ty-24,28,28);
+    ctx.fillStyle="#4a8030"; ctx.fillRect(tx-6,ty-30,20,22);
+    ctx.fillStyle="#5a9038"; ctx.fillRect(tx-2,ty-36,12,16);
+    ctx.fillStyle=C.wood;   ctx.fillRect(tx+3,ty+2,6,14);
+  });
+}
+
+function drawNPCs(){
+  const npcs=[
+    {x:440,y:320,c:"#d04040",hc:"#883020"},
+    {x:480,y:370,c:"#40a080",hc:"#206040"},
+    {x:510,y:310,c:"#a04080",hc:"#601040"},
+  ];
+  npcs.forEach(n=>{
+    ctx.fillStyle=n.c;  ctx.fillRect(n.x,n.y,14,16);
+    ctx.fillStyle="#ffe0bd"; ctx.fillRect(n.x+1,n.y-9,12,10);
+    ctx.fillStyle=n.hc; ctx.fillRect(n.x,n.y-14,14,8);
+    ctx.fillStyle="#330000"; ctx.fillRect(n.x+3,n.y-6,2,2); ctx.fillRect(n.x+9,n.y-6,2,2);
+  });
+}
+
+// ── DRAWING: PLAYER (Link-inspired, red tunic) ──
+function drawPlayer(){
+  const {x,y,attacking,shielding,direction,hp,maxHp} = player;
+
+  // Shadow
+  ctx.fillStyle="rgba(0,0,0,0.3)";
+  ctx.fillRect(x+2,y+26,22,6);
+
+  // Boots
+  ctx.fillStyle="#441100";
+  ctx.fillRect(x+3,y+22,7,8); ctx.fillRect(x+14,y+22,7,8);
+
+  // Legs
+  ctx.fillStyle="#228844";
+  ctx.fillRect(x+4,y+16,7,8); ctx.fillRect(x+14,y+16,7,8);
+
+  // Body (tunic)
+  ctx.fillStyle="#cc2020";
+  ctx.fillRect(x+2,y+6,20,14);
+  // Tunic lighter front
+  ctx.fillStyle="#dd3030";
+  ctx.fillRect(x+6,y+8,12,10);
+
+  // Belt
+  ctx.fillStyle="#441100"; ctx.fillRect(x+2,y+16,20,3);
+  ctx.fillStyle="#cc9920"; ctx.fillRect(x+9,y+16,6,4); // buckle
+
+  // Arms
+  ctx.fillStyle="#ffe0bd";
+  ctx.fillRect(x-2,y+7,5,10); ctx.fillRect(x+21,y+7,5,10);
+
+  // Neck & face
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(x+8,y+2,8,7);
+
+  // Hat (green pointy elf hat)
+  ctx.fillStyle="#228844";
+  ctx.beginPath();
+  ctx.moveTo(x+4,y+2); ctx.lineTo(x+12,y-18); ctx.lineTo(x+22,y+2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#33aa55";
+  ctx.beginPath();
+  ctx.moveTo(x+6,y+2); ctx.lineTo(x+12,y-14); ctx.lineTo(x+18,y+2); ctx.closePath(); ctx.fill();
+  // hat brim
+  ctx.fillStyle="#117733"; ctx.fillRect(x+2,y,20,4);
+
+  // Eyes
+  ctx.fillStyle="#222"; ctx.fillRect(x+9,y+3,3,2); ctx.fillRect(x+16,y+3,3,2);
+
+  // Shield (left side)
+  if(shielding){
+    ctx.fillStyle="#d0d0d0"; ctx.fillRect(x-10,y+4,10,20);
+    ctx.fillStyle="#cc2020"; ctx.fillRect(x-8,y+8,6,8);
+    ctx.fillStyle="#f5c542"; ctx.fillRect(x-6,y+10,2,4);
+  }
+
+  // Sword
+  if(attacking){
+    ctx.fillStyle="#c8c8c8";
+    const sw=24, sh=4;
+    if(direction==="right"){ ctx.fillRect(x+26,y+8,sw,sh); ctx.fillStyle="#996622"; ctx.fillRect(x+22,y+6,6,8); }
+    if(direction==="left") { ctx.fillRect(x-sw-2,y+8,sw,sh); ctx.fillStyle="#996622"; ctx.fillRect(x-4,y+6,6,8); }
+    if(direction==="up")   { ctx.fillRect(x+10,y-sw-2,sh,sw); ctx.fillStyle="#996622"; ctx.fillRect(x+8,y-4,8,6); }
+    if(direction==="down") { ctx.fillRect(x+10,y+28,sh,sw); ctx.fillStyle="#996622"; ctx.fillRect(x+8,y+24,8,6); }
+    // sword sparkle
+    ctx.fillStyle="#ffffaa";
+    if(direction==="right") ctx.fillRect(x+46,y+6,4,4);
+    if(direction==="left")  ctx.fillRect(x-26,y+6,4,4);
+    if(direction==="up")    ctx.fillRect(x+8,y-26,4,4);
+    if(direction==="down")  ctx.fillRect(x+8,y+50,4,4);
+  }
+
+  // Damage flash
+  if(player.invincible>0 && Math.floor(player.invincible/4)%2===0){
+    ctx.fillStyle="rgba(255,255,255,0.4)";
+    ctx.fillRect(x-2,y-2,28,34);
+  }
+}
+
+// ── DRAWING: GOO MONSTER ──
+function drawGoos(){
+  const t=Date.now()/200;
+  goos.forEach((g,i)=>{
+    const bob=Math.sin(t+i)*2;
+    const gx=~~g.x, gy=~~(g.y+bob);
+    const s=g.size;
+    // shadow
+    ctx.fillStyle="rgba(0,0,0,0.25)"; ctx.fillRect(gx+2,gy+s,s-4,5);
+    // body (wobbly)
+    const sx=Math.sin(t*1.5+i)*1.5;
+    ctx.fillStyle="#00dd66"; ctx.fillRect(gx-~~sx,gy,s+~~(sx*2),s);
+    ctx.fillStyle="#00ff88"; ctx.fillRect(gx+2,gy+2,s-8,s/2);
+    ctx.fillStyle="#00aa44"; ctx.fillRect(gx,gy+s/2,s,s/2);
+    // eyes
+    ctx.fillStyle="#003322"; ctx.fillRect(gx+4,gy+4,4,4); ctx.fillRect(gx+s-8,gy+4,4,4);
+    ctx.fillStyle="#00ff44"; ctx.fillRect(gx+5,gy+5,2,2); ctx.fillRect(gx+s-7,gy+5,2,2);
+    // mouth
+    ctx.fillStyle="#002211"; ctx.fillRect(gx+5,gy+s-7,s-10,3);
+    // drip
+    if(Math.sin(t+i*2)>0.5){ ctx.fillStyle="#00cc55"; ctx.fillRect(gx+s/2-1,gy+s,3,4); }
+    // hp bar (if damaged)
+    if(g.hp < g.maxHp){
+      ctx.fillStyle="#330000"; ctx.fillRect(gx,gy-6,s,4);
+      ctx.fillStyle="#ff4400"; ctx.fillRect(gx,gy-6,s*(g.hp/g.maxHp),4);
+    }
+  });
+}
+
+// ── MOVE PLAYER ──
+function movePlayer(){
+  let moved=false;
+  if(keys["ArrowUp"]||keys["w"]||keys["W"]) { player.y-=player.speed; player.direction="up";   moved=true; }
+  if(keys["ArrowDown"]||keys["s"]||keys["S"]){ player.y+=player.speed; player.direction="down"; moved=true; }
+  if(keys["ArrowLeft"]||keys["a"]||keys["A"]){ player.x-=player.speed; player.direction="left"; moved=true; }
+  if(keys["ArrowRight"]||keys["d"]||keys["D"]){player.x+=player.speed; player.direction="right";moved=true; }
+  player.x = Math.max(0, Math.min(W-player.size, player.x));
+  player.y = Math.max(0, Math.min(H-player.size, player.y));
+  if(moved){
+    player.footTimer++;
+    player.animTick++;
+    if(player.animTick>8){player.animFrame=(player.animFrame+1)%4; player.animTick=0;}
+    if(player.footTimer>14){
+      spawnParticles(player.x+10, player.y+30, "#c2b280", 4);
+      player.footTimer=0;
+    }
+  }
+  if(player.invincible>0) player.invincible--;
+}
+
+// ── SWORD HIT BOX ──
+function getSwordBox(){
+  const {x,y,direction,attacking}=player;
+  if(!attacking) return null;
+  const r=30;
+  if(direction==="right") return {x:x+player.size, y:y+4, w:r, h:player.size-8};
+  if(direction==="left")  return {x:x-r,         y:y+4, w:r, h:player.size-8};
+  if(direction==="up")    return {x:x+4, y:y-r,         w:player.size-8, h:r};
+  if(direction==="down")  return {x:x+4, y:y+player.size, w:player.size-8, h:r};
+  return null;
+}
+function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
+  return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
+}
+
+// ── UPDATE ENEMIES ──
+function updateGoos(){
+  const sword = getSwordBox();
+  for(let i=goos.length-1;i>=0;i--){
+    const g=goos[i];
+    const dx=player.x-g.x, dy=player.y-g.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(d>0){ g.x+=dx/d*g.speed; g.y+=dy/d*g.speed; }
+
+    // sword collision
+    if(sword && rectsOverlap(sword.x,sword.y,sword.w,sword.h, g.x,g.y,g.size,g.size)){
+      g.hp--;
+      spawnParticles(g.x+g.size/2, g.y+g.size/2,"#00ff88");
+      spawnFloat("-1", g.x+4, g.y, "#00ff88");
+      screenShake=5;
+      if(g.hp<=0){
+        const coins=rand(1,3);
+        player.coins+=coins;
+        spawnFloat("+"+coins+"🪙", g.x, g.y-12,"#f5c542");
+        sfxCoin();
+        goos.splice(i,1);
+      }
+      continue;
+    }
+
+    // player touch
+    if(d < player.size+2){
+      if(!player.shielding && player.invincible<=0){
+        const dmg = g.size===28?15:10;
+        player.hp -= dmg;
+        player.invincible = 45;
+        spawnParticles(player.x+12,player.y+12,"#ff4400",6);
+        spawnFloat("-"+dmg, player.x, player.y,"#ff4400");
+        screenShake=8;
+        sfxHit();
+      }
+      if(player.shielding){
+        spawnParticles(player.x-6,player.y+12,"#aaaaaa",4);
+        g.x-=dx/d*3; g.y-=dy/d*3; // bounce
+      }
+    }
+  }
+
+  if(goos.length===0 && missionActive){
+    missionActive=false;
+    const bonus=rand(10,30);
+    player.coins+=bonus;
+    player.potions++;
+    waveTag.textContent="WAVE CLEARED!";
+    missionText.textContent="Prayag is Safe!";
+    setMsg("✨ Wave "+waveNum+" cleared! +" +bonus+"🪙 +1💊");
+    sfxVictory();
+    spawnPending=false;
+    setTimeout(()=>{ waveTag.textContent="MISSION"; missionText.textContent="Patrol…"; },3000);
+    setTimeout(startNextWave, 5000);
+  }
+}
+
+// ── SHOP / HEAL ──
+function nearShop(){
+  return player.x>550 && player.x<740 && player.y>380 && player.y<510;
+}
+function heal(){
+  if(player.potions>0 && player.hp<player.maxHp){
+    player.hp = Math.min(player.maxHp, player.hp+40);
+    player.potions--;
+    spawnParticles(player.x+12,player.y+4,"#00ff88",10);
+    spawnFloat("+40 HP", player.x, player.y,"#00ff88");
+    setMsg("Healed! 💊");
+    sfxHeal();
+  } else if(player.hp>=player.maxHp){
+    setMsg("HP is full!");
+  } else {
+    setMsg("No potions!");
+  }
+}
+function buyPotion(){
+  if(nearShop()){
+    if(player.coins>=5){
+      player.coins-=5;
+      player.potions++;
+      spawnFloat("+1💊 -5🪙", player.x, player.y,"#00ff88");
+      setMsg("Potion purchased! 💊");
+      sfxHeal();
+    } else {
+      setMsg("Not enough coins! Need 5🪙");
+    }
+  } else {
+    setMsg("Visit the shop first!");
+  }
+}
+
+// ── MISSIONS / WAVES ──
+function startNextWave(){
+  if(missionActive || spawnPending) return;
+  spawnPending=true;
+  waveNum++;
+  const side=missionSides[rand(0,3)];
+  const amount=Math.min(10+waveNum*4, 60)+rand(0,10);
+  const hp=Math.ceil(waveNum/2);
+  const speed=Math.min(0.8+waveNum*0.12, 2.5);
+
+  waveTag.textContent="⚠ WAVE "+waveNum;
+  missionText.textContent="Protect "+side+"!";
+  waveText.textContent=waveNum;
+  setMsg("⚔ "+amount+" Goo Monsters from the "+side+"! (Wave "+waveNum+")");
+  sfxWave();
+
+  setTimeout(()=>{
+    for(let i=0;i<amount;i++){
+      let gx=0, gy=0;
+      if(side==="North"){ gx=rand(0,W-20); gy=rand(-280,-30); }
+      if(side==="South"){ gx=rand(0,W-20); gy=rand(H+30,H+280); }
+      if(side==="East") { gx=rand(W+30,W+280); gy=rand(0,H-20); }
+      if(side==="West") { gx=rand(-280,-30); gy=rand(0,H-20); }
+      const bigGoo = waveNum>3 && Math.random()<0.15;
+      goos.push({x:gx,y:gy, size:bigGoo?28:20, speed:speed*(bigGoo?0.7:1), hp:hp*(bigGoo?3:1), maxHp:hp*(bigGoo?3:1)});
+    }
+    missionActive=true;
+    spawnPending=false;
+  }, 2500);
+}
+
+// ── RESPAWN ──
+function respawn(){
+  sfxDeath();
+  spawnParticles(player.x+12,player.y+12,"#ff4400",20);
+  player.hp=player.maxHp; player.x=620; player.y=460;
+  player.invincible=90;
+  goos.length=0;
+  missionActive=false; spawnPending=false;
+  missionText.textContent="Respawned…";
+  setMsg("💀 Defeated! Respawned at the shop.");
+  setTimeout(startNextWave, 4000);
+}
+
+// ── WORLD TIME / NIGHT ──
+function updateWorldTime(){
+  worldTime+=0.003;
+  if(worldTime>Math.PI*2) worldTime-=Math.PI*2;
+  const blend=(Math.sin(worldTime)+1)/2; // 0=day 1=night
+  nightBlend=lerp(nightBlend, blend>0.7?1:0, 0.005);
+  if(nightBlend>0){
+    ctx.fillStyle=`rgba(0,0,30,${nightBlend*0.38})`;
+    ctx.fillRect(0,0,W,H);
+    // moon
+    if(nightBlend>0.5){
+      ctx.fillStyle=`rgba(240,240,200,${(nightBlend-0.5)*2*0.9})`;
+      ctx.beginPath(); ctx.arc(740,50,20,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(0,0,30,${(nightBlend-0.5)*2*0.9})`;
+      ctx.beginPath(); ctx.arc(750,44,17,0,Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+// ── HUD UPDATE ──
+function updateHUD(){
+  const h=Math.max(0,~~player.hp);
+  hpText.textContent=h;
+  hpBar.style.width=(h/player.maxHp*100)+"%";
+  hpBar.style.background=h>50?"linear-gradient(90deg,#22cc22,#44ff44)":h>25?"linear-gradient(90deg,#cc8822,#ffaa44)":"linear-gradient(90deg,#cc2222,#ff4444)";
+  potionText.textContent=player.potions;
+  coinText.textContent=player.coins;
+  waveText.textContent=waveNum;
+}
+
+// ── SHOP HINT ──
+let shopHintTimer=0;
+function shopHint(){
+  shopHintTimer++;
+  if(nearShop()&&shopHintTimer%120===0) setMsg("🛒 Press B / Buy button to buy potion (5🪙)");
+}
+
+// ── SCREEN SHAKE ──
+function applyShake(){
+  if(screenShake>0){
+    ctx.setTransform(1,0,0,1,(Math.random()-0.5)*screenShake*0.8,(Math.random()-0.5)*screenShake*0.8);
+    screenShake--;
+  } else {
+    ctx.setTransform(1,0,0,1,0,0);
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  START SCREEN
+// ══════════════════════════════════════════════════
+let titleAnim=0;
+function drawStartScreen(){
+  titleAnim+=0.04;
+  // Background
+  ctx.fillStyle="#050810"; ctx.fillRect(0,0,W,H);
+  // Pixel stars
+  ctx.fillStyle="white";
+  [[80,40],[200,100],[500,60],[700,30],[650,150],[120,200],[400,90],[300,170],[730,200]].forEach(([sx,sy])=>{
+    const blink=Math.sin(titleAnim*2+sx)*0.5+0.5;
+    ctx.globalAlpha=blink*0.8+0.2;
+    ctx.fillRect(sx,sy,2,2);
+  });
+  ctx.globalAlpha=1;
+
+  // Title glow
+  const g=ctx.createLinearGradient(150,160,650,160);
+  g.addColorStop(0,"#ffaa00"); g.addColorStop(0.5,"#fff080"); g.addColorStop(1,"#ffaa00");
+  ctx.shadowColor="#f5c542"; ctx.shadowBlur=30;
+  ctx.fillStyle=g;
+  ctx.font="bold 44px 'Courier New',monospace";
+  ctx.textAlign="center";
+  ctx.fillText("LEGEND OF PRAYAG",W/2,170);
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle="#cc8822";
+  ctx.font="bold 16px 'Courier New',monospace";
+  ctx.fillText("⸻  GBA EDITION  ⸻",W/2,200);
+
+  // Mini pixel art hero
+  drawStaticHero(W/2-12,240);
+
+  // Controls hint
+  ctx.fillStyle="#8a7040";
+  ctx.font="12px 'Courier New',monospace";
+  ctx.fillText("WASD/Arrows: Move    Space: Sword    Shift: Shield",W/2,340);
+  ctx.fillText("H: Heal    B: Buy Potion    P/ESC: Pause",W/2,358);
+
+  // Press enter blink
+  const blink=Math.sin(titleAnim*3)*0.5+0.5;
+  ctx.globalAlpha=0.5+blink*0.5;
+  ctx.fillStyle="#f5c542";
+  ctx.font="bold 18px 'Courier New',monospace";
+  ctx.fillText("▶  PRESS ENTER TO START  ◀",W/2,310);
+  ctx.globalAlpha=1;
+
+  ctx.fillStyle="#554020";
+  ctx.font="10px 'Courier New',monospace";
+  ctx.fillText("Also tap any action button on mobile",W/2,390);
+  ctx.textAlign="left";
+}
+
+function drawStaticHero(hx,hy){
+  ctx.fillStyle="#228844"; ctx.fillRect(hx+2,hy,20,4);
+  ctx.fillStyle="#ffe0bd"; ctx.fillRect(hx+6,hy+4,12,8);
+  ctx.fillStyle="#cc2020"; ctx.fillRect(hx+2,hy+12,20,14);
+  ctx.fillStyle="#441100"; ctx.fillRect(hx+3,hy+24,7,6); ctx.fillRect(hx+14,hy+24,7,6);
+  ctx.fillStyle="#f5c542"; ctx.fillRect(hx+2,hy+16,5,3);
+}
+
+// ══════════════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════════════
+function gameLoop(){
+  if(!gameStarted){ drawStartScreen(); requestAnimationFrame(gameLoop); return; }
+  if(paused){ requestAnimationFrame(gameLoop); return; }
+
+  applyShake();
+  ctx.clearRect(0,0,W,H);
+
+  drawMap();
+  movePlayer();
+  drawPlayer();
+
+  updateGoos();
+  drawGoos();
+
+  updateParticles();
+  updateFloatTexts();
+  updateWorldTime();
+  updateHUD();
+  shopHint();
+
+  ctx.setTransform(1,0,0,1,0,0);
+
+  if(player.hp<=0) respawn();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+function initGame(){
+  Object.assign(player,{
+    x:400,y:300,hp:100,maxHp:100,potions:3,coins:0,
+    attacking:false,shielding:false,direction:"down",
+    invincible:0,footTimer:0,animFrame:0,animTick:0
+  });
+  goos.length=0; particles.length=0; floatTexts.length=0;
+  missionActive=false; spawnPending=false; waveNum=0;
+  screenShake=0; nightBlend=0; worldTime=0;
+  missionText.textContent="Protect Prayag!";
+  waveTag.textContent="MISSION";
+  updateHUD();
+}
+
+function startGame(){
+  gameStarted=true;
+  initGame();
+  setMsg("Welcome, Hero! Defend Prayag! 🗡️");
+  setTimeout(startNextWave, 2000);
+  // Try to play background music on first interaction
+  const m=document.getElementById("bgMusic");
+  if(m&&m.src&&m.src.length>10){ m.volume=0.4; m.play().catch(()=>{}); }
+}
+
+// ── BUTTON BINDINGS ──
+function bindKey(id,key){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const dn=()=>{ keys[key]=true; };
+  const up=()=>{ keys[key]=false; };
+  el.addEventListener("mousedown",dn); el.addEventListener("mouseup",up); el.addEventListener("mouseleave",up);
+  el.addEventListener("touchstart",e=>{e.preventDefault();dn();},{passive:false});
+  el.addEventListener("touchend",e=>{e.preventDefault();up();},{passive:false});
+}
+function bindAction(id,dn,up){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener("mousedown",dn); el.addEventListener("mouseup",up); el.addEventListener("mouseleave",up);
+  el.addEventListener("touchstart",e=>{e.preventDefault();dn();},{passive:false});
+  el.addEventListener("touchend",e=>{e.preventDefault();up();},{passive:false});
+}
+function bindClick(id,fn){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener("click",fn);
+  el.addEventListener("touchend",e=>{e.preventDefault();fn();},{passive:false});
+}
+
+bindKey("upBtn","ArrowUp");  bindKey("downBtn","ArrowDown");
+bindKey("leftBtn","ArrowLeft"); bindKey("rightBtn","ArrowRight");
+bindKey("mUp","ArrowUp");    bindKey("mDown","ArrowDown");
+bindKey("mLeft","ArrowLeft");bindKey("mRight","ArrowRight");
+
+bindAction("attackBtn", ()=>{ if(!gameStarted){startGame();return;} player.attacking=true; sfxAttack(); if(navigator.vibrate)navigator.vibrate(30); },
+                         ()=>player.attacking=false);
+bindAction("shieldBtn", ()=>player.shielding=true, ()=>player.shielding=false);
+bindAction("mAttack",   ()=>{ if(!gameStarted){startGame();return;} player.attacking=true; sfxAttack(); if(navigator.vibrate)navigator.vibrate(30); },
+                         ()=>player.attacking=false);
+bindAction("mShield",   ()=>player.shielding=true, ()=>player.shielding=false);
+
+bindClick("healBtn", ()=>{ if(!gameStarted){startGame();return;} heal(); });
+bindClick("buyBtn",  ()=>{ if(!gameStarted){startGame();return;} buyPotion(); });
+bindClick("mHeal",   ()=>{ if(!gameStarted){startGame();return;} heal(); });
+bindClick("mBuy",    ()=>{ if(!gameStarted){startGame();return;} buyPotion(); });
+
+// Start anim loop
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
